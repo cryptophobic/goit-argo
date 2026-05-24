@@ -1,0 +1,46 @@
+# A tiny, dependency-free workload kept alongside the namespace manifests as a
+# minimal smoke-test app. The graded deployment is MLflow (see ../../application.yaml);
+# this nginx is handy if you want a second, even-lighter app to sync.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+  namespace: application
+  labels:
+    app: nginx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx
+  namespace: application
+  labels:
+    app: nginx
+spec:
+  type: ClusterIP
+  selector:
+    app: nginx
+  ports:
+    - port: 80
+      targetPort: 80
