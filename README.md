@@ -1,56 +1,51 @@
-# goit-argo
+# goit-argo — GitOps маніфести для ML-OPS-CI-CD-classes (lesson-8-9)
 
-GitOps-репозиторій із маніфестами, які підхоплює **ArgoCD**, розгорнутий у EKS
-(див. основний репозиторій із Terraform-кодом ArgoCD).
+Цей репозиторій — джерело правди для ArgoCD у кластері EKS, який піднімається з
+Terraform у [ML-OPS-CI-CD-classes](https://github.com/Cryptophobic/ML-OPS-CI-CD-classes).
 
 ## Структура
 
-```text
-goit-argo
-├── application.yaml              # ArgoCD Application: Helm-деплой MLflow
-├── namespaces
-│   ├── application
-│   │   ├── ns.yaml               # Namespace application
-│   │   └── nginx.yaml            # додатковий легкий smoke-test застосунок
-│   └── infra-tools
-│       └── ns.yaml               # Namespace infra-tools (де живе ArgoCD)
-├── values
-│   └── mlflow-values.yaml        # довідкова копія overrides для MLflow
-└── README.md
+```
+.
+├── root-app.yaml                       # App-of-Apps — apply один раз
+├── apps/
+│   ├── postgres.yaml                   # Application → manifests/postgres/
+│   ├── minio.yaml                      # Application → charts.min.io/minio
+│   ├── mlflow.yaml                     # Application → community-charts/mlflow
+│   ├── pushgateway.yaml                # Application → prom-comm/pushgateway
+│   └── kube-prometheus-stack.yaml      # Application → prom-comm/kps
+└── manifests/
+    └── postgres/                       # Plain k8s маніфести для Postgres
+        ├── secret.yaml
+        ├── service.yaml
+        └── deployment.yaml
 ```
 
-## Що деплоїться
+## Bootstrap
 
-`application.yaml` описує ArgoCD `Application`, який тягне Helm-чарт **MLflow**
-(`community-charts/mlflow`, версія `1.8.1`) з ArtifactHub і розгортає його в
-namespace `application`:
+1. У основному репо: `terraform apply` (root) → `terraform -chdir=terraform/argocd apply`.
+2. Зареєструвати root-Application:
+   ```bash
+   kubectl apply -n infra-tools -f root-app.yaml
+   ```
+3. ArgoCD створить 5 дочірніх Application: postgres, minio, mlflow, pushgateway,
+   kube-prometheus-stack. Auto-sync + self-heal — увімкнено.
 
-- `repoURL: https://community-charts.github.io/helm-charts`
-- `chart: mlflow`, `targetRevision: 1.8.1`
-- overrides — **inline** (`spec.source.helm.values`)
-- `syncPolicy.automated`: `prune: true`, `selfHeal: true`
-- `syncOptions: [CreateNamespace=true]`
+## Namespace layout
 
-## Як застосувати
+| Namespace      | Що живе                                                |
+|----------------|--------------------------------------------------------|
+| `infra-tools`  | ArgoCD (Helm release від Terraform); Application CRs   |
+| `mlflow`       | Postgres, MinIO, MLflow Tracking Server                |
+| `monitoring`   | Prometheus, Grafana, PushGateway, kube-state-metrics   |
 
-ArgoCD має бути вже встановлений у namespace `infra-tools` (через Terraform).
-Зареєструйте Application у кластері:
+## Service DNS
 
-```bash
-kubectl apply -f application.yaml
-```
-
-Далі auto-sync + self-heal самі підтримують MLflow у синхронному стані.
-Перевірка:
-
-```bash
-kubectl get applications -n infra-tools
-kubectl get pods -n application
-```
-
-## Доступ до MLflow
-
-```bash
-kubectl port-forward svc/mlflow -n application 5001:80
-# відкрити http://localhost:5001
-```
+| Сервіс      | DNS                                                                 |
+|-------------|---------------------------------------------------------------------|
+| Postgres    | `postgres.mlflow.svc.cluster.local:5432`                            |
+| MinIO       | `minio.mlflow.svc.cluster.local:9000` (API), `:9001` (console)      |
+| MLflow      | `mlflow.mlflow.svc.cluster.local:5000`                              |
+| PushGateway | `prometheus-pushgateway.monitoring.svc.cluster.local:9091`          |
+| Grafana     | `kube-prometheus-stack-grafana.monitoring.svc.cluster.local:80`     |
+| Prometheus  | `kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090`|
