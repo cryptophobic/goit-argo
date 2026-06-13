@@ -17,19 +17,24 @@ spec:
     helm:
       values: |
         replicaCount: 1
+        # Чарт 1.8.1 за замовч. приходить з image tag MLflow 3.7.0, який
+        # обовʼязково запускає нове Security middleware і відмовляє
+        # in-cluster клієнтам через DNS-rebinding check. Параметр
+        # `--allowed-hosts` доступний тільки на uvicorn-runtime, але
+        # чарт додає `--gunicorn-opts` коли є `extraArgs.workers`, тож
+        # сумістити їх не виходить. Простіше — пінімо MLflow 2.20.4
+        # (без security middleware, повна сумісність з нашим клієнтом
+        # mlflow==2.18 у app/model requirements).
+        image:
+          repository: burakince/mlflow
+          tag: "2.20.4"
         service:
           enabled: true
           type: ClusterIP
           port: 5000
           containerPort: 5000
-        # MLflow 3.x за замовч. вмикає Security middleware (Host header
-        # validation, CORS). Параметри `--allowed-hosts` / `--host`
-        # підтримуються лише при uvicorn-runtime (default), не з
-        # gunicorn. Тому НЕ передаємо `--workers` тут — мережа за нас
-        # робить uvicorn в один потік.
         extraArgs:
-          host: "0.0.0.0"
-          allowed-hosts: "*"
+          workers: "1"
         backendStore:
           databaseMigration: true
           databaseConnectionCheck: true
