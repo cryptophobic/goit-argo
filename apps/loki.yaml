@@ -1,0 +1,64 @@
+# grafana/loki-stack — компактний bundle: Loki (single-binary, fs-storage)
+# + Promtail (DaemonSet, читає /var/log/pods на кожній ноді й шиплить у Loki).
+# Grafana та Prometheus вимикаємо — їх вже постачає kube-prometheus-stack.
+#
+# Loki service DNS: loki.logging.svc.cluster.local:3100.
+#
+# Чарт офіційно "deprecated" з 2024-06 (рекомендується ставити loki +
+# promtail окремо), але для демо-курсу він найкомпактніший і працює без
+# додаткової конфігурації.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: loki
+  namespace: infra-tools
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://grafana.github.io/helm-charts
+    chart: loki-stack
+    targetRevision: 2.10.2
+    helm:
+      values: |
+        grafana:
+          enabled: false
+        prometheus:
+          enabled: false
+        loki:
+          enabled: true
+          isDefault: false
+          persistence:
+            enabled: false
+          config:
+            limits_config:
+              retention_period: 24h
+              reject_old_samples: true
+              reject_old_samples_max_age: 1h
+          resources:
+            requests:
+              cpu: 100m
+              memory: 192Mi
+            limits:
+              memory: 512Mi
+        promtail:
+          enabled: true
+          config:
+            clients:
+              - url: http://loki.logging.svc.cluster.local:3100/loki/api/v1/push
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 128Mi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: logging
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

@@ -1,0 +1,32 @@
+# FastAPI inference-сервіс фінального проекту. Чарт лежить у
+# ML-OPS-CI-CD-classes (репо з кодом), гілка final-project, директорія
+# helm/. Розгортається у namespace `inference`.
+#
+# Файл — дзеркало `argocd/application.yaml` з того ж репо: ArgoCD root-app
+# у нашому App-of-Apps читає лише goit-argo/apps/, тому Application має
+# жити тут, щоб бути автоматично підхопленим.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: digits-inference
+  namespace: infra-tools
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Cryptophobic/ML-OPS-CI-CD-classes.git
+    targetRevision: final-project
+    path: helm
+    helm:
+      releaseName: digits-inference
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: inference
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

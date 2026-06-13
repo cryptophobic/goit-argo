@@ -1,0 +1,25 @@
+# Реєструє Loki як datasource у Grafana через sidecar-механізм
+# kube-prometheus-stack-а (Grafana sidecar сканує ConfigMap-и з лейблом
+# `grafana_datasource: "1"`).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: grafana-loki-datasource
+  namespace: infra-tools
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Cryptophobic/goit-argo.git
+    targetRevision: main
+    path: manifests/grafana-loki-datasource
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
