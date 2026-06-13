@@ -24,6 +24,12 @@ spec:
           containerPort: 5000
         extraArgs:
           workers: "1"
+          # MLflow 2.18+ за замовч. блокує Host header, що відрізняється
+          # від localhost (DNS-rebinding protection). Для in-cluster
+          # клієнтів (FastAPI inference, train Job) сервер віддає 403,
+          # тому дозволяємо все.
+          host: "0.0.0.0"
+          allowed-hosts: "*"
         backendStore:
           databaseMigration: true
           databaseConnectionCheck: true
