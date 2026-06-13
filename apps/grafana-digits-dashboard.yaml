@@ -1,0 +1,24 @@
+# Імпортує наш JSON-дешборд у Grafana через ConfigMap-sidecar
+# (KPS sidecar `grafana_dashboard: "1"` → auto-import).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: grafana-digits-dashboard
+  namespace: infra-tools
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Cryptophobic/goit-argo.git
+    targetRevision: main
+    path: manifests/grafana-digits-dashboard
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
