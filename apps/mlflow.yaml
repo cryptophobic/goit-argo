@@ -22,12 +22,12 @@ spec:
           type: ClusterIP
           port: 5000
           containerPort: 5000
+        # MLflow 3.x за замовч. вмикає Security middleware (Host header
+        # validation, CORS). Параметри `--allowed-hosts` / `--host`
+        # підтримуються лише при uvicorn-runtime (default), не з
+        # gunicorn. Тому НЕ передаємо `--workers` тут — мережа за нас
+        # робить uvicorn в один потік.
         extraArgs:
-          workers: "1"
-          # MLflow 2.18+ за замовч. блокує Host header, що відрізняється
-          # від localhost (DNS-rebinding protection). Для in-cluster
-          # клієнтів (FastAPI inference, train Job) сервер віддає 403,
-          # тому дозволяємо все.
           host: "0.0.0.0"
           allowed-hosts: "*"
         backendStore:
