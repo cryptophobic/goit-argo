@@ -61,6 +61,14 @@ spec:
               cpu: 50m
               memory: 32Mi
         prometheusOperator:
+          # Вимикаємо admission webhook patcher Job. Цей Helm-хук Job
+          # сам себе видаляє після успіху, і ArgoCD ловить це як
+          # "Resource missing" на кожному наступному reconcile —
+          # sync зависає у "Failed/Retrying". Webhooks для нашого
+          # демо-сценарію (тільки ServiceMonitor + ConfigMap-dashboards)
+          # не потрібні.
+          admissionWebhooks:
+            enabled: false
           resources:
             requests:
               cpu: 50m
